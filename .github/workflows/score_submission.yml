@@ -3,7 +3,7 @@ name: Score Submission
 on:
   pull_request:
     paths:
-      - "submissions/**"
+      - "submissions/**/*.enc"
 
 permissions:
   contents: write
@@ -13,14 +13,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout MAIN branch (not PR merge commit)
-      - name: Checkout main branch
+      - name: Checkout main
         uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
 
-      # 2️⃣ Checkout private evaluation repo
       - name: Checkout private evaluation repo
         uses: actions/checkout@v4
         with:
@@ -28,7 +26,6 @@ jobs:
           token: ${{ secrets.PRIVATE_REPO_TOKEN }}
           path: private_eval
 
-      # 3️⃣ Setup Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -37,25 +34,38 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      # 4️⃣ Evaluate submission
+      - name: Get submission file
+        id: file
+        run: |
+          FILE=$(find submissions -name "*.enc" | head -n 1)
+          echo "file=$FILE" >> $GITHUB_OUTPUT
+
+      - name: Decrypt submission
+        env:
+          SUBMISSION_PRIVATE_KEY: ${{ secrets.SUBMISSION_PRIVATE_KEY }}
+        run: |
+          python encryption/decrypt.py "${{ steps.file.outputs.file }}"
+
       - name: Evaluate submission
         id: eval
         run: |
+          CSV_FILE="${{ steps.file.outputs.file }}"
+          CSV_FILE="${CSV_FILE%.enc}.csv"
+
           SCORE=$(python competition/evaluate.py \
-          submissions/submission.csv \
+          "$CSV_FILE" \
           private_eval/test_labels.csv | grep SCORE | cut -d "=" -f2)
+
           echo "score=$SCORE" >> $GITHUB_OUTPUT
 
-      # 5️⃣ Append to leaderboard
       - name: Append to leaderboard
         run: |
-          echo "${{ github.actor }},GCN,${{ steps.eval.outputs.score }},$(date -u +"%Y-%m-%dT%H:%M:%SZ"),Auto submission" >> leaderboard/leaderboard.csv
+          echo "${{ github.actor }},${{ steps.eval.outputs.score }},$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> leaderboard/leaderboard.csv
 
-      # 6️⃣ Commit & Push to MAIN safely
-      - name: Commit leaderboard update
+      - name: Commit leaderboard
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add leaderboard/leaderboard.csv
-          git commit -m "Auto-update leaderboard for ${{ github.actor }}" || exit 0
+          git commit -m "Leaderboard update for ${{ github.actor }}" || exit 0
           git push origin HEAD:main
