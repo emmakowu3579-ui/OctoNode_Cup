@@ -1,4 +1,5 @@
 name: Publish Leaderboard
+
 on:
   push:
     branches: [ main ]
@@ -10,12 +11,18 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     steps:
       - uses: actions/checkout@v4
-      - run: |
+
+      - name: Render leaderboard
+        run: |
           python competition/render_leaderboard.py
+
+      - name: Commit rendered leaderboard
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add leaderboard/leaderboard.md docs/leaderboard.html
-          git commit -m "Render leaderboard update [skip ci]" || exit 0
+          git commit -m "Render leaderboard [skip ci]" || exit 0
           git push origin HEAD:main
