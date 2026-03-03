@@ -37,29 +37,33 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      # 5️⃣ List all files for debugging
-      - name: List repo files
+      # 5️⃣ List repo structure for debugging
+      - name: Debug repo structure
         run: |
-          echo "Listing all files in repo recursively:"
+          echo "Listing all files recursively:"
           ls -R
 
-      # 6️⃣ Find submission file recursively
-      - name: Get submission file
-        id: file
+      # 6️⃣ Find all .enc files recursively
+      - name: Find submission files
+        id: files
         run: |
-          FILE=$(find submissions -type f -name "*.enc" | head -n 1)
-          echo "file=$FILE" >> $GITHUB_OUTPUT
+          FILES=$(find submissions -type f -name "*.enc")
+          echo "All .enc files found:"
+          echo "$FILES"
+          FIRST_FILE=$(echo "$FILES" | head -n 1)
+          echo "First file to process: $FIRST_FILE"
+          echo "file=$FIRST_FILE" >> $GITHUB_OUTPUT
 
-      # 7️⃣ Debug: confirm submission file
-      - name: Debug submission file
+      # 7️⃣ Check submission file exists
+      - name: Check submission file
         run: |
-          echo "Submission file detected: ${{ steps.file.outputs.file }}"
-          if [ -z "${{ steps.file.outputs.file }}" ]; then
-            echo "ERROR: No .enc file found in submissions folder!"
+          if [ -z "${{ steps.files.outputs.file }}" ]; then
+            echo "ERROR: No .enc submission file found in submissions/"
             exit 1
           fi
+          echo "Submission file exists: ${{ steps.files.outputs.file }}"
 
-      # 8️⃣ Check that secret is set
+      # 8️⃣ Check that private key secret is set
       - name: Check private key secret
         run: |
           if [ -z "$SUBMISSION_PRIVATE_KEY" ]; then
@@ -75,13 +79,13 @@ jobs:
         env:
           SUBMISSION_PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
         run: |
-          python encryption/decrypt.py "${{ steps.file.outputs.file }}"
+          python encryption/decrypt.py "${{ steps.files.outputs.file }}"
 
       # 🔟 Evaluate submission
       - name: Evaluate submission
         id: eval
         run: |
-          CSV_FILE="${{ steps.file.outputs.file }}"
+          CSV_FILE="${{ steps.files.outputs.file }}"
           CSV_FILE="${CSV_FILE%.enc}.csv"
 
           SCORE=$(python competition/evaluate.py \
