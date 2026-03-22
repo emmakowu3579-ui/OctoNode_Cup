@@ -130,7 +130,7 @@ jobs:
           
           OUTPUT=$(python competition/evaluate.py \
           "$CSV_FILE" \
-          private_eval/test_labels.csv)
+          private_eval/test_target_labels.csv)
 
           echo "===== Evaluation Output ====="
           echo "$OUTPUT"
