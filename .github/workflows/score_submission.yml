@@ -110,9 +110,9 @@ jobs:
           echo "score=$SCORE" >> $GITHUB_OUTPUT
 
       # Append to leaderboard
-      #- name: Append to leaderboard
-      #  run: |
-         # echo "${{ github.actor }},${{ steps.eval.outputs.score }},$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> docs/leaderboard.csv
+      - name: Append to leaderboard
+        run: |
+          echo "${{ github.actor }},${{ steps.eval.outputs.score }},$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> docs/leaderboard.csv
 
       # Commit leaderboard
       - name: Commit leaderboard
